@@ -1,5 +1,7 @@
 from parstubuilder import ParametricStudy as ps
 import pytest
+import os
+import shutil
 
 # --------------------------
 # initialization tests
@@ -57,3 +59,56 @@ def test_invalid_kwarg_init():
                 pathToStudy='/path/to/study/',
                 invalidKwarg='this is a test'
                 )
+
+# --------------------------
+# build study tests
+# --------------------------
+
+def test_create_study_dir():
+    myStudy = ps(
+            studyName='study_name',
+            pathToStudy='./',
+            inputFileGen='mesoGen.py',
+            inputFileMod='mesoMod.py',
+            parametric_info={'par1':[0,1,2],'par2':[3,4,5]}
+            )
+    myStudy.build()
+    existing = os.path.isdir(myStudy.pathToStudy+myStudy.studyName)
+    if existing:
+        shutil.rmtree(myStudy.pathToStudy+myStudy.studyName)
+    assert existing
+
+def test_create_existing_study_dir():
+    myStudy = ps(
+            studyName='study_name',
+            pathToStudy='./',
+            inputFileGen='mesoGen.py',
+            inputFileMod='mesoMod.py',
+            parametric_info={'par1':[0,1,2],'par2':[3,4,5]}
+            )
+    os.makedirs(myStudy.pathToStudy+myStudy.studyName)
+    try:
+        myStudy.build()
+    except OSError:
+        pass
+    existing = os.path.isdir(myStudy.pathToStudy+myStudy.studyName+'1')
+    shutil.rmtree(myStudy.pathToStudy+myStudy.studyName)
+    if existing:
+        shutil.rmtree(myStudy.pathToStudy+myStudy.studyName+'1')
+    assert existing
+
+
+def test_create_study_subdir():
+    myStudy = ps(
+            studyName='study_name',
+            pathToStudy='./',
+            inputFileGen='mesoGen.py',
+            inputFileMod='mesoMod.py',
+            parametric_info={'par1':[0,1,2],'par2':[3,4,5]}
+            )
+    myStudy.build()
+    numOfSubDirs = 0
+    for p,d,f in os.walk(myStudy.pathToStudy+myStudy.studyName):
+        numOfSubDirs += len(d)
+    shutil.rmtree(myStudy.pathToStudy+myStudy.studyName)
+    assert numOfSubDirs == 9
