@@ -6,19 +6,19 @@ class ParametricStudy:
         if len(kwargs) == 0:
             self.studyName = 'Study Name'
             self.pathToStudy = 'path-to-study'
-            self.inputFileGen = 'input file generator executable name'
+            self.defaultInputFileName = 'defaultInputFile.dat'
             self.inputFileMod = 'input file modifier executable name'
             self.parametric_info = {}
         else:
             self.studyName = 'Study Name'
             self.pathToStudy = 'path-to-study'
-            self.inputFileGen = 'input file generator executable name'
+            self.defaultInputFileName = 'defaultInputFile.dat'
             self.inputFileMod = 'input file modifier executable name'
             self.parametric_info = {}
             validKwargs = {
                     'studyName':self.studyName,
                     'pathToStudy':self.pathToStudy,
-                    'inputFileGen':self.inputFileGen,
+                    'defaultInputFileName':self.defaultInputFileName,
                     'inputFileMod':self.inputFileMod,
                     'parametric_info':self.parametric_info
                     }
@@ -37,7 +37,7 @@ class ParametricStudy:
                 validKwargs[key] = kwargs[key]
             self.studyName = validKwargs['studyName']
             self.pathToStudy = validKwargs['pathToStudy']
-            self.inputFileGen = validKwargs['inputFileGen']
+            self.defaultInputFileName = validKwargs['defaultInputFileName']
             self.inputFileMod = validKwargs['inputFileMod']
             self.parametric_info = validKwargs['parametric_info']
 
