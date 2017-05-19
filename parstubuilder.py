@@ -7,18 +7,21 @@ class ParametricStudy:
             self.studyName = 'Study Name'
             self.pathToStudy = 'path-to-study'
             self.defaultInputFileName = 'defaultInputFile.dat'
+            self.defaultPBSFileName = 'defaultPBSFile.pbs'
             self.inputFileMod = 'input file modifier executable name'
             self.parametric_info = {}
         else:
             self.studyName = 'Study Name'
             self.pathToStudy = 'path-to-study'
             self.defaultInputFileName = 'defaultInputFile.dat'
+            self.defaultPBSFileName = 'defaultPBSFile.pbs'
             self.inputFileMod = 'input file modifier executable name'
             self.parametric_info = {}
             validKwargs = {
                     'studyName':self.studyName,
                     'pathToStudy':self.pathToStudy,
                     'defaultInputFileName':self.defaultInputFileName,
+                    'defaultPBSFileName':self.defaultPBSFileName,
                     'inputFileMod':self.inputFileMod,
                     'parametric_info':self.parametric_info
                     }
@@ -38,6 +41,7 @@ class ParametricStudy:
             self.studyName = validKwargs['studyName']
             self.pathToStudy = validKwargs['pathToStudy']
             self.defaultInputFileName = validKwargs['defaultInputFileName']
+            self.defaultPBSFileName = validKwargs['defaultPBSFileName']
             self.inputFileMod = validKwargs['inputFileMod']
             self.parametric_info = validKwargs['parametric_info']
 

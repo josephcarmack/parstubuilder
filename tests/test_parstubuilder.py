@@ -12,6 +12,7 @@ def test_no_arg_init():
     assert myStudy.studyName == 'Study Name'
     assert myStudy.pathToStudy == 'path-to-study'
     assert myStudy.defaultInputFileName == 'defaultInputFile.dat'
+    assert myStudy.defaultPBSFileName == 'defaultPBSFile.pbs'
     assert myStudy.inputFileMod == 'input file modifier executable name'
     assert myStudy.parametric_info == {}
 
@@ -19,13 +20,15 @@ def test_all_kwargs_init():
     myStudy = ps(
             studyName='test name',
             pathToStudy='/path/to/study/',
-            defaultInputFileName='mesoGen.py',
+            defaultInputFileName='input.dat',
+            defaultPBSFileName='myPBS.pbs',
             inputFileMod='mesoMod.py',
             parametric_info={'par1':[0,1,2],'par2':[3,4,5]}
             )
     assert myStudy.studyName == 'test name'
     assert myStudy.pathToStudy == '/path/to/study/'
-    assert myStudy.defaultInputFileName == 'mesoGen.py'
+    assert myStudy.defaultInputFileName == 'input.dat'
+    assert myStudy.defaultPBSFileName == 'myPBS.pbs'
     assert myStudy.inputFileMod == 'mesoMod.py'
     assert myStudy.parametric_info == {'par1':[0,1,2],'par2':[3,4,5]}
 
@@ -68,7 +71,7 @@ def test_create_study_dir():
     myStudy = ps(
             studyName='study_name',
             pathToStudy='./',
-            defaultInputFileName='mesoGen.py',
+            defaultInputFileName='input.dat',
             inputFileMod='mesoMod.py',
             parametric_info={'par1':[0,1,2],'par2':[3,4,5]}
             )
@@ -82,7 +85,7 @@ def test_create_existing_study_dir():
     myStudy = ps(
             studyName='study_name',
             pathToStudy='./',
-            defaultInputFileName='mesoGen.py',
+            defaultInputFileName='input.dat',
             inputFileMod='mesoMod.py',
             parametric_info={'par1':[0,1,2],'par2':[3,4,5]}
             )
@@ -102,7 +105,7 @@ def test_create_study_subdir():
     myStudy = ps(
             studyName='study_name',
             pathToStudy='./',
-            defaultInputFileName='mesoGen.py',
+            defaultInputFileName='input.dat',
             inputFileMod='mesoMod.py',
             parametric_info={'par1':[0,1,2],'par2':[3,4,5]}
             )
