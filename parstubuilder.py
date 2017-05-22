@@ -1,28 +1,32 @@
 import os
+import shutil
 
 class ParametricStudy:
 
     def __init__(self,**kwargs):
         if len(kwargs) == 0:
-            self.studyName = 'Study Name'
-            self.pathToStudy = 'path-to-study'
-            self.defaultInputFileName = 'defaultInputFile.dat'
-            self.defaultPBSFileName = 'defaultPBSFile.pbs'
-            self.inputFileMod = 'input file modifier executable name'
-            self.parametric_info = {}
+            self.studyName = None
+            self.pathToStudy = None
+            self.defaultInputFileName = None
+            self.defaultPBSFileName = None
+            self.lineMod = None
+            self.simExecute = None
+            self.parametric_info = None
         else:
-            self.studyName = 'Study Name'
-            self.pathToStudy = 'path-to-study'
-            self.defaultInputFileName = 'defaultInputFile.dat'
-            self.defaultPBSFileName = 'defaultPBSFile.pbs'
-            self.inputFileMod = 'input file modifier executable name'
-            self.parametric_info = {}
+            self.studyName = None
+            self.pathToStudy = None
+            self.defaultInputFileName = None
+            self.defaultPBSFileName = None
+            self.lineMod = None
+            self.simExecute = None
+            self.parametric_info = None
             validKwargs = {
                     'studyName':self.studyName,
                     'pathToStudy':self.pathToStudy,
                     'defaultInputFileName':self.defaultInputFileName,
                     'defaultPBSFileName':self.defaultPBSFileName,
-                    'inputFileMod':self.inputFileMod,
+                    'lineMod':self.lineMod,
+                    'simExecute':self.simExecute,
                     'parametric_info':self.parametric_info
                     }
 
@@ -42,11 +46,41 @@ class ParametricStudy:
             self.pathToStudy = validKwargs['pathToStudy']
             self.defaultInputFileName = validKwargs['defaultInputFileName']
             self.defaultPBSFileName = validKwargs['defaultPBSFileName']
-            self.inputFileMod = validKwargs['inputFileMod']
+            self.lineMod = validKwargs['lineMod']
+            self.simExecute = validKwargs['simExecute']
             self.parametric_info = validKwargs['parametric_info']
 
 
     def build(self):
+
+
+        # ------------------------------------------
+        # check to make sure class members have been
+        # initialized properly
+        # ------------------------------------------
+
+        classMembers = {
+                'studyName':self.studyName,
+                'pathToStudy':self.pathToStudy,
+                'defaultInputFileName':self.defaultInputFileName,
+                'defaultPBSFileName':self.defaultPBSFileName,
+                'lineMod':self.lineMod,
+                'simExecute':self.simExecute,
+                'parametric_info':self.parametric_info
+                }
+        goodInitialization = True
+        for mem in classMembers:
+            if classMembers[mem] == None:
+                goodInitialization = False
+                print('Class member '+mem+' was not initialized to an')
+                print('appropriate value or data structure.')
+        if not goodInitialization:
+            print('You must initialize all class members before attempting')
+            print('to build a parametric study. Class members that must be')
+            print('initialized include:')
+            for mem in classMembers:
+                print(mem)
+        assert goodInitialization
 
         # -----------------------------
         # create main study directory
@@ -60,7 +94,8 @@ class ParametricStudy:
             os.makedirs(self.pathToStudy + self.studyName+'1')
 
         # ------------------------------------------------
-        # create subdirectories for parametric study (i.e. 
+        # create subdirectories, input files, executables,
+        # and PBS files for the parametric study (i.e. 
         # one for each unique set of parameters)
         # ------------------------------------------------
 
@@ -90,9 +125,37 @@ class ParametricStudy:
                     val_i = 0
             skip *= numParValues
 
-        # loop over list of unique param sets and create directories
+        # loop over list of unique param sets and create directories and files
         for s in listOfSets:
+
+            # create sub directories
             subDirName = '/'
             for param in s:
                 subDirName += str(param)+str(s[param])
-            os.makedirs(self.pathToStudy+self.studyName+subDirName)
+            pathPlusSub = self.pathToStudy+self.studyName+subDirName 
+            os.makedirs(pathPlusSub)
+
+            # populate sub-directory with input file, sim exec, and PBS file
+            os.system('cp ' + self.defaultInputFileName + ' ' + pathPlusSub)
+            os.system('cp ' + self.defaultPBSFileName + ' ' + pathPlusSub)
+            os.system('cp ' + self.simExecute + ' ' + pathPlusSub)
+
+            # modify input file by looping over each parameter to be modified
+            for par in s:
+                # input file in current sub-directory
+                curInFi = pathPlusSub+'/'+self.defaultInputFileName
+                # create temporary copy of input file
+                tempInFi = pathPlusSub+'/temp'
+                shutil.copy(curInFi,tempInFi)
+                # read from temp and write modified version to original
+                with open(tempInFi,'r') as fin:
+                    with open(curInFi,'w') as fout:
+                        for line in fin:
+                            if par in line:
+                                modifiedLine = self.lineMod(line,par,s[par])
+                                fout.write(modifiedLine)
+                            else:
+                                fout.write(line)
+                    fout.close()
+                    fin.close()
+                    os.remove(tempInFi)
