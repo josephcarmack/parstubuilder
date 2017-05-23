@@ -23,7 +23,7 @@ def test_all_kwargs_init():
             studyName='test name',
             pathToStudy='/path/to/study/',
             defaultInputFileName='input.dat',
-            defaultPBSFileName='myPBS.pbs',
+            defaultPBSFileName='run.pbs',
             lineMod=myLineMod,
             simExecute='meso',
             parametric_info={'par1':[0,1,2],'par2':[3,4,5]}
@@ -31,7 +31,7 @@ def test_all_kwargs_init():
     assert myStudy.studyName == 'test name'
     assert myStudy.pathToStudy == '/path/to/study/'
     assert myStudy.defaultInputFileName == 'input.dat'
-    assert myStudy.defaultPBSFileName == 'myPBS.pbs'
+    assert myStudy.defaultPBSFileName == 'run.pbs'
     assert myStudy.lineMod == myLineMod
     assert myStudy.parametric_info == {'par1':[0,1,2],'par2':[3,4,5]}
 
@@ -60,6 +60,18 @@ def test_invalid_kwarg_init():
         myStudy = ps(
                 pathToStudy='/path/to/study/',
                 invalidKwarg='this is a test'
+                )
+
+def test_valid_pbs_file():
+    with pytest.raises(AssertionError):
+        myStudy = ps(
+                studyName='study_name',
+                pathToStudy='./',
+                defaultInputFileName='input.dat',
+                defaultPBSFileName='tests/invalid.pbs',
+                lineMod=myLineMod,
+                simExecute='meso',
+                parametric_info={'par1':[0,1,2],'par2':[3,4,5]}
                 )
 
 # --------------------------
@@ -172,6 +184,30 @@ def test_input_file_modification():
                     fin.close()
                     shutil.rmtree(myStudy.pathToStudy+myStudy.studyName)
                     break
+
+def test_pbs_file_modification():
+    myStudy = ps(
+            studyName='study_name',
+            pathToStudy='./',
+            defaultInputFileName='input.dat',
+            defaultPBSFileName='run.pbs',
+            lineMod=myLineMod,
+            simExecute='meso',
+            parametric_info={'a':[0,1,2],'b':[3,4,5]}
+            )
+    myStudy.build()
+    with open('study_name/a0b3/run.pbs') as fin:
+        contents = fin.read()
+        fin.seek(0)
+        for line in fin:
+            good = line == '#PBS -N a0b3\n'
+            break
+    fin.close()
+    if not good:
+        print('failed pbs file contents:')
+        print(contents)
+    shutil.rmtree(myStudy.pathToStudy+myStudy.studyName)
+    assert good
 
 # --------------------------
 # submit batch job tests

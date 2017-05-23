@@ -50,7 +50,6 @@ class ParametricStudy:
             self.simExecute = validKwargs['simExecute']
             self.parametric_info = validKwargs['parametric_info']
 
-
     def build(self):
 
 
@@ -140,6 +139,22 @@ class ParametricStudy:
             os.system('cp ' + self.defaultPBSFileName + ' ' + pathPlusSub)
             os.system('cp ' + self.simExecute + ' ' + pathPlusSub)
 
+            # modify pbs file's job name
+            # create temporary copy of input file
+            curPbsFi = pathPlusSub+'/'+self.defaultPBSFileName
+            tempPbsFi = pathPlusSub+'/temp'
+            shutil.copy(curPbsFi,tempPbsFi)
+            with open(tempPbsFi,'r') as fin:
+                with open(curPbsFi,'w') as fout:
+                    for line in fin:
+                        if '#PBS -N ' in line:
+                            fout.write('#PBS -N '+subDirName[1:]+'\n')
+                        else:
+                            fout.write(line)
+            fout.close()
+            fin.close()
+            os.remove(tempPbsFi)
+
             # modify input file by looping over each parameter to be modified
             for par in s:
                 # input file in current sub-directory
@@ -156,6 +171,6 @@ class ParametricStudy:
                                 fout.write(modifiedLine)
                             else:
                                 fout.write(line)
-                    fout.close()
-                    fin.close()
-                    os.remove(tempInFi)
+                fout.close()
+                fin.close()
+                os.remove(tempInFi)
