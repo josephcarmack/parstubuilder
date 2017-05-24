@@ -1,16 +1,17 @@
 import os
 import shutil
+import subprocess as sp
 
 class ParametricStudy:
 
     def __init__(self,**kwargs):
+        self.buildComplete = False
         if len(kwargs) == 0:
             self.studyName = None
             self.pathToStudy = None
             self.defaultInputFileName = None
             self.defaultPBSFileName = None
             self.lineMod = None
-            self.simExecute = None
             self.parametric_info = None
         else:
             self.studyName = None
@@ -18,7 +19,6 @@ class ParametricStudy:
             self.defaultInputFileName = None
             self.defaultPBSFileName = None
             self.lineMod = None
-            self.simExecute = None
             self.parametric_info = None
             validKwargs = {
                     'studyName':self.studyName,
@@ -26,7 +26,6 @@ class ParametricStudy:
                     'defaultInputFileName':self.defaultInputFileName,
                     'defaultPBSFileName':self.defaultPBSFileName,
                     'lineMod':self.lineMod,
-                    'simExecute':self.simExecute,
                     'parametric_info':self.parametric_info
                     }
 
@@ -47,8 +46,15 @@ class ParametricStudy:
             self.defaultInputFileName = validKwargs['defaultInputFileName']
             self.defaultPBSFileName = validKwargs['defaultPBSFileName']
             self.lineMod = validKwargs['lineMod']
-            self.simExecute = validKwargs['simExecute']
             self.parametric_info = validKwargs['parametric_info']
+
+    # special method used to sort list of dictionaries
+    def specialSort(self,dic):
+        crit = []
+        mykeys = sorted(dic.keys())
+        for key in mykeys:
+            crit.append(dic[key])
+        return tuple(crit)
 
     def build(self):
 
@@ -64,7 +70,6 @@ class ParametricStudy:
                 'defaultInputFileName':self.defaultInputFileName,
                 'defaultPBSFileName':self.defaultPBSFileName,
                 'lineMod':self.lineMod,
-                'simExecute':self.simExecute,
                 'parametric_info':self.parametric_info
                 }
         goodInitialization = True
@@ -107,9 +112,9 @@ class ParametricStudy:
         container = self.parametric_info.copy()
         for k in container:
             container[k] = 0
-        listOfSets = []
+        self.listOfSets = []
         for i in range(numberOfParamSets):
-            listOfSets.append(container.copy())
+            self.listOfSets.append(container.copy())
 
         # calculate each unique parameter set
         skip = 1
@@ -117,27 +122,32 @@ class ParametricStudy:
             numParValues = len(self.parametric_info[parameter])
             val_i =0
             for i in range(numberOfParamSets):
-                listOfSets[i][parameter] = self.parametric_info[parameter][val_i]
+                self.listOfSets[i][parameter] = self.parametric_info[parameter][val_i]
                 if i%skip == 0:
                     val_i += 1
                 if val_i == numParValues:
                     val_i = 0
             skip *= numParValues
 
+        # sort parameter sets list
+        self.listOfSets.sort(key=self.specialSort)
+
         # loop over list of unique param sets and create directories and files
-        for s in listOfSets:
+        self.subDir = []
+        for s in self.listOfSets:
 
             # create sub directories
             subDirName = '/'
             for param in s:
                 subDirName += str(param)+str(s[param])
             pathPlusSub = self.pathToStudy+self.studyName+subDirName 
+            self.subDir.append(pathPlusSub)
+
             os.makedirs(pathPlusSub)
 
             # populate sub-directory with input file, sim exec, and PBS file
             os.system('cp ' + self.defaultInputFileName + ' ' + pathPlusSub)
             os.system('cp ' + self.defaultPBSFileName + ' ' + pathPlusSub)
-            os.system('cp ' + self.simExecute + ' ' + pathPlusSub)
 
             # modify pbs file's job name
             # create temporary copy of input file
@@ -174,3 +184,29 @@ class ParametricStudy:
                 fout.close()
                 fin.close()
                 os.remove(tempInFi)
+
+        # inidicate the study has built succefully
+        self.buildComplete = True
+
+
+    def hpcExecute(self,numConcJobs):
+
+        # make sure build method has been called aready
+        assert self.buildComplete
+
+        # -----------------------------------------------
+        # loop over the list of unique parameter sets and
+        # submit them to the HPC
+        # -----------------------------------------------
+
+        self.jobIDs = []
+
+        # start the first batch of jobs to run simultaneously
+        for i in range(numConcJobs):
+            # start a job
+            os.chdir(self.subDir[i])
+            #jID = sp.run('qsub '+self.defaultPBSFileName,shell=True,stdout=sp.PIPE)
+            #self.jobIDs.append(jID.stdout.decode('utf-8').split('.')[0])
+            jID = '111'+str(i)
+            print(os.getcwd())
+            print('running job '+jID)
