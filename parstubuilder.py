@@ -245,16 +245,11 @@ class ParametricStudy:
             self.allJobs.append(jID.split('.')[0])
 
         # start the rest of the jobs on hold until the first batch finishes
-        nextBatch = []
-        for id in jobIDs:
-            nextBatch.append(id)
-        count = 1
         for sd in self.subDir[numConcJobs:]:
             os.chdir(sd)
-            jobStr = ':'.join(nextBatch)
+            jobStr = jobIDs[0]
             # build the command to submit job to the HPC
             cmd = ['qsub','-W','depend=afterany:'+jobStr,self.defaultPBSFileName]
-            print(cmd)
             # submit the job and get the job ID
             jID = sp.check_output(cmd)
             # store the job ID in a list
@@ -263,19 +258,41 @@ class ParametricStudy:
             self.allJobs.append(jID.split('.')[0])
             # make sure job list never grows beyond numConcJobs
             jobIDs.pop(0)
-            # update nextBatch
-            if (count % numConcJobs) == 0:
-                for i in range(numConcJobs):
-                    nextBatch[i] = jobIDs[i]
-            count += 1
 
         # -----------------------------------------------
         # write job ID's to the file 'jobIDs.txt'
         # -----------------------------------------------
 
         # change back to the starting directory
-        os.chdir(self.startDir)
+        os.chdir(self.startDir+'/'+self.studyName)
         with open('jobIDs.txt','w') as fout:
             for jobID in self.allJobs:
                 fout.write(jobID+'\n')
         fout.close()
+
+
+    def batchDelete(self):
+
+        # -----------------------------------------------
+        # check that study is defined and valid
+        # -----------------------------------------------
+
+        # checking for jobID.txt file existence
+        assert os.path.isfile(self.startDir+'/'+self.studyName+'/jobIDs.txt')
+
+        # make sure studyName atribute is defined
+        bad = self.studyName == None
+        if bad:
+            print('must define attribute "studyName" before calling this method.')
+            print('the string you pass to the batchDelete method must match the')
+            print('"studyName" attribute.')
+        assert not bad
+
+        with open(self.startDir+'/'+self.studyName+'/jobIDs.txt') as fin:
+            for line in fin:
+                jobID = line.split('\n')[0]
+                cmd = ['qdel',jobID]
+                print('Deleting job with job ID: '+jobID)
+                cmdReturn = sp.check_output(cmd)
+                print(cmdReturn)
+        fin.close()
