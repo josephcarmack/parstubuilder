@@ -15,7 +15,6 @@ def test_no_arg_init():
     assert myStudy.defaultInputFileName == None
     assert myStudy.defaultPBSFileName == None
     assert myStudy.lineMod == None
-    assert myStudy.simExecute == None
     assert myStudy.parametric_info == None
 
 def test_all_kwargs_init():
@@ -25,7 +24,6 @@ def test_all_kwargs_init():
             defaultInputFileName='input.dat',
             defaultPBSFileName='run.pbs',
             lineMod=myLineMod,
-            simExecute='meso',
             parametric_info={'par1':[0,1,2],'par2':[3,4,5]}
             )
     assert myStudy.studyName == 'test name'
@@ -70,7 +68,6 @@ def test_valid_pbs_file():
                 defaultInputFileName='input.dat',
                 defaultPBSFileName='tests/invalid.pbs',
                 lineMod=myLineMod,
-                simExecute='meso',
                 parametric_info={'par1':[0,1,2],'par2':[3,4,5]}
                 )
 
@@ -90,7 +87,6 @@ def test_create_study_dir():
             defaultInputFileName='input.dat',
             defaultPBSFileName='run.pbs',
             lineMod=myLineMod,
-            simExecute='meso',
             parametric_info={'par1':[0,1,2],'par2':[3,4,5]}
             )
     try:
@@ -109,7 +105,6 @@ def test_create_existing_study_dir():
             defaultInputFileName='input.dat',
             defaultPBSFileName='run.pbs',
             lineMod=myLineMod,
-            simExecute='meso',
             parametric_info={'par1':[0,1,2],'par2':[3,4,5]}
             )
     os.makedirs(myStudy.pathToStudy+myStudy.studyName)
@@ -131,7 +126,6 @@ def test_create_study_subdir():
             defaultInputFileName='input.dat',
             defaultPBSFileName='run.pbs',
             lineMod=myLineMod,
-            simExecute='meso',
             parametric_info={'par1':[0,1,2],'par2':[3,4,5]}
             )
     myStudy.build()
@@ -148,7 +142,6 @@ def test_subdir_file_creation():
             defaultInputFileName='input.dat',
             defaultPBSFileName='run.pbs',
             lineMod=myLineMod,
-            simExecute='meso',
             parametric_info={'par1':[0,1,2],'par2':[3,4,5]}
             )
     # create fake default input file, psb file, and simulation executable
@@ -157,7 +150,7 @@ def test_subdir_file_creation():
     for p,d,f in os.walk(myStudy.pathToStudy+myStudy.studyName):
         numOfInputFiles += len(f)
     shutil.rmtree(myStudy.pathToStudy+myStudy.studyName)
-    assert numOfInputFiles == 27
+    assert numOfInputFiles == 18
 
 def test_input_file_modification():
     myStudy = ps(
@@ -166,7 +159,6 @@ def test_input_file_modification():
             defaultInputFileName='input.dat',
             defaultPBSFileName='run.pbs',
             lineMod=myLineMod,
-            simExecute='meso',
             parametric_info={'a':[0,1,2],'b':[3,4,5]}
             )
     myStudy.build()
@@ -192,7 +184,6 @@ def test_pbs_file_modification():
             defaultInputFileName='input.dat',
             defaultPBSFileName='run.pbs',
             lineMod=myLineMod,
-            simExecute='meso',
             parametric_info={'a':[0,1,2],'b':[3,4,5]}
             )
     myStudy.build()
@@ -210,6 +201,15 @@ def test_pbs_file_modification():
     assert good
 
 # --------------------------
-# submit batch job tests
+# hpcExecute tests
 # --------------------------
 
+def test_hpcExecute_no_argument():
+    myStudy = ps()
+    with pytest.raises(TypeError):
+        myStudy.hpcExecute()
+
+def test_hpcExecute_without_building_study():
+    myStudy = ps()
+    with pytest.raises(AssertionError):
+        myStudy.hpcExecute(3)
