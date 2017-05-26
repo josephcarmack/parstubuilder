@@ -293,6 +293,19 @@ class ParametricStudy:
                 jobID = line.split('\n')[0]
                 cmd = ['qdel',jobID]
                 print('Deleting job with job ID: '+jobID)
-                cmdReturn = sp.check_output(cmd)
-                print(cmdReturn)
+                try:
+                    cmdReturn = sp.check_output(cmd)
+                except Exception as e:
+                    print('exception caught: '+ type(e).__name__)
         fin.close()
+
+# lineMod function that works for MESO
+
+def lineMod(line,par,par_value):
+    rep_value = str(par_value)+str('\n')
+    if par in line:
+        orig_value = str(line.split(' = ')[1])
+        rep_line = line.replace(orig_value,rep_value)
+        return rep_line
+    else:
+        return None
