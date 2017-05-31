@@ -5,53 +5,48 @@ import subprocess as sp
 class ParametricStudy:
 
     def __init__(self,**kwargs):
-        self.startDir = os.getcwd()
+
+        self.startDir = os.getcwd()+'/'
         self.numOfParamSets = None
         self.subDir = None
         self.listOfSets = None
         self.buildComplete = False
         self.allJobs = None
-        if len(kwargs) == 0:
-            self.studyName = None
-            self.pathToStudy = None
-            self.defaultInputFileName = None
-            self.defaultPBSFileName = None
-            self.lineMod = None
-            self.parametric_info = None
-        else:
-            self.studyName = None
-            self.pathToStudy = None
-            self.defaultInputFileName = None
-            self.defaultPBSFileName = None
-            self.lineMod = None
-            self.parametric_info = None
-            validKwargs = {
-                    'studyName':self.studyName,
-                    'pathToStudy':self.pathToStudy,
-                    'defaultInputFileName':self.defaultInputFileName,
-                    'defaultPBSFileName':self.defaultPBSFileName,
-                    'lineMod':self.lineMod,
-                    'parametric_info':self.parametric_info
-                    }
+        self.studyName = None
+        self.defaultInputFileName = None
+        self.defaultPBSFileName = None
+        self.lineMod = None
+        self.parametric_info = None
 
-            # check for valid keyword arguments
-            for key in kwargs:
-                if key not in validKwargs:
-                    eflag = key
-                    print(str(eflag)+' is not a valid keyword! Valid keyword args:')
-                    for k in validKwargs:
-                        print(k)
-                    raise ValueError('invalid keyword argument')
+        validKwargs = {
+                'studyName':self.studyName,
+                'defaultInputFileName':self.defaultInputFileName,
+                'defaultPBSFileName':self.defaultPBSFileName,
+                'lineMod':self.lineMod,
+                'parametric_info':self.parametric_info
+                }
 
-            # assign keyword args to respective class attributes
-            for key in kwargs:
-                validKwargs[key] = kwargs[key]
-            self.studyName = validKwargs['studyName']
-            self.pathToStudy = validKwargs['pathToStudy']
-            self.defaultInputFileName = validKwargs['defaultInputFileName']
-            self.defaultPBSFileName = validKwargs['defaultPBSFileName']
-            self.lineMod = validKwargs['lineMod']
-            self.parametric_info = validKwargs['parametric_info']
+        # check for valid keyword arguments
+        for key in kwargs:
+            if key not in validKwargs:
+                eflag = key
+                print(str(eflag)+' is not a valid keyword! Valid keyword args:')
+                for k in validKwargs:
+                    print(k)
+                raise ValueError('invalid keyword argument')
+
+        # assign keyword args to respective class attributes
+        for key in kwargs:
+            validKwargs[key] = kwargs[key]
+        self.studyName = validKwargs['studyName']
+        self.defaultInputFileName = validKwargs['defaultInputFileName']
+        self.defaultPBSFileName = validKwargs['defaultPBSFileName']
+        self.lineMod = validKwargs['lineMod']
+        self.parametric_info = validKwargs['parametric_info']
+
+
+
+
 
     # special method used to sort list of dictionaries
     def specialSort(self,dic):
@@ -61,6 +56,11 @@ class ParametricStudy:
             crit.append(dic[key])
         return tuple(crit)
 
+
+
+
+
+    # build parametric study method
     def build(self):
 
 
@@ -71,7 +71,6 @@ class ParametricStudy:
 
         classMembers = {
                 'studyName':self.studyName,
-                'pathToStudy':self.pathToStudy,
                 'defaultInputFileName':self.defaultInputFileName,
                 'defaultPBSFileName':self.defaultPBSFileName,
                 'lineMod':self.lineMod,
@@ -95,12 +94,7 @@ class ParametricStudy:
         # create main study directory
         # -----------------------------
 
-        try:
-            os.makedirs(self.pathToStudy + self.studyName)
-        except OSError:
-            print('study directory '+self.pathToStudy+self.studyName+
-                    ' already exists. Creating variant study directory.')
-            os.makedirs(self.pathToStudy + self.studyName+'1')
+        os.makedirs(self.startDir + self.studyName)
 
         # ------------------------------------------------
         # create subdirectories, input files, executables,
@@ -145,7 +139,7 @@ class ParametricStudy:
             subDirName = '/'
             for param in s:
                 subDirName += str(param)+str(s[param])
-            pathPlusSub = self.pathToStudy+self.studyName+subDirName
+            pathPlusSub = self.startDir+self.studyName+subDirName
             self.subDir.append(pathPlusSub)
 
             os.makedirs(pathPlusSub)
