@@ -193,6 +193,61 @@ def test_pbs_file_modification():
     assert good
 
 
+def test_mulit_jobs_per_node_create_scripts_dir():
+    myStudy = ps(
+            studyName='study_name',
+            defaultInputFileName='input.dat',
+            defaultPBSFileName='run.pbs',
+            lineMod=myLineMod,
+            parametric_info={'a':[0,1,2],'b':[3,4,5]}
+            )
+    myStudy.multipleJobsPerNode = True
+    myStudy.executableName = 'running the executable'
+    myStudy.build()
+    good = os.path.isdir('study_name/jobScripts')
+    if not good:
+        print('contents of study directory:')
+        os.system('ls study_name')
+    shutil.rmtree(myStudy.startDir+myStudy.studyName)
+    assert good
+
+
+def test_multi_jobs_per_node_create_submission_scripts():
+    myStudy = ps(
+            studyName='study_name',
+            defaultInputFileName='input.dat',
+            defaultPBSFileName='run.pbs',
+            lineMod=myLineMod,
+            parametric_info={'a':[0,1,2,3],'b':[4,5,6,7]}
+            )
+    myStudy.multipleJobsPerNode = True
+    myStudy.executableName = 'running the executable'
+    myStudy.build()
+    good = os.path.isfile('study_name/jobScripts/jobs1-16.pbs')
+    if not good:
+        os.system('ls study_name/jobScripts')
+    shutil.rmtree(myStudy.startDir+myStudy.studyName)
+    assert good
+
+
+def test_multi_jobs_per_node_partial_node_use():
+    myStudy = ps(
+            studyName='study_name',
+            defaultInputFileName='input.dat',
+            defaultPBSFileName='run.pbs',
+            lineMod=myLineMod,
+            parametric_info={'a':[0,1,2,3],'b':[4,5,6,7,8]}
+            )
+    myStudy.multipleJobsPerNode = True
+    myStudy.executableName = 'running the executable'
+    myStudy.build()
+    good = os.path.isfile('study_name/jobScripts/jobs17-20.pbs')
+    if not good:
+        os.system('ls study_name/jobScripts')
+    shutil.rmtree(myStudy.startDir+myStudy.studyName)
+    assert good
+
+
 # --------------------------
 # hpcExecute tests
 # --------------------------
