@@ -4,7 +4,6 @@ import os
 # instantiate a ParametricStudy object
 myStudy = psb.ParametricStudy(
         studyName='mydemo',
-        pathToStudy=os.getcwd()+'/',
         defaultInputFileName='input.dat',
         defaultPBSFileName='run.pbs',
         lineMod=psb.lineMod,
