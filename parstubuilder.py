@@ -21,6 +21,8 @@ class ParametricStudy:
         self.executableName = None
         self.coresPerNode = 16
         self.coresPerJob = 1
+        self.numNodes = None
+        self.leftOverJobs = None
 
         validKwargs = {
                 'studyName':self.studyName,
@@ -234,15 +236,15 @@ class ParametricStudy:
             if jobsPerNode < 1 or jobsPerNode > self.coresPerNode:
                 print('invalid value for either "coresPerNode" attribute or "coresPerJob" attribute.')
                 raise AssertionError
-            numNodes = int(int(self.numOfParamSets)/int(jobsPerNode))
-            leftOverJobs = int(int(self.numOfParamSets)%int(jobsPerNode))
+            self.numNodes = int(int(self.numOfParamSets)/int(jobsPerNode))
+            self.leftOverJobs = int(int(self.numOfParamSets)%int(jobsPerNode))
 
             # create directory for job scripts and populate with needed pbs files
             os.makedirs(self.startDir+self.studyName+'/jobScripts')
             jobCounter = 0
             jstart = 0
             jend = 0
-            for i in range(numNodes):
+            for i in range(self.numNodes):
                 jstart = i*jobsPerNode+1
                 jend = (i+1)*jobsPerNode
                 jnum = str(jstart)+'-'+str(jend)
@@ -275,9 +277,9 @@ class ParametricStudy:
                 fout.close()
 
             # handle case when using only some cores of the last node
-            if leftOverJobs > 0:
+            if self.leftOverJobs > 0:
                 jstart = jend + 1
-                jend = jend + leftOverJobs
+                jend = jend + self.leftOverJobs
                 jnum = str(jstart)+'-'+str(jend)
                 curPbsFi = self.startDir+self.studyName+'/jobScripts/jobs'+jnum+'.pbs'
                 os.system('cp '+self.startDir+self.defaultPBSFileName+' '+curPbsFi)
@@ -296,7 +298,7 @@ class ParametricStudy:
                                 fout.write(line)
 
                         # write bash code to pbs file that starts and waits for jobs assigned this file
-                        for j in range(leftOverJobs):
+                        for j in range(self.leftOverJobs):
                             fout.write('cd '+self.subDir[jobCounter]+'\n')
                             fout.write(execCommand+'&\n')
                             jobCounter += 1
@@ -329,18 +331,8 @@ class ParametricStudy:
 
         # make sure numConcJobs is greater than zero
         if numConcJobs < 1:
-            print('0 < numConcJobs <= total number of parameter sets')
+            print('0 < numConcJobs.')
         assert numConcJobs > 1
-
-        # make sure numConcJobs is less than the number of parameter sets
-        if not (numConcJobs <= self.numOfParamSets):
-            print('numConcJobs must be less than the total number of parameter sets.')
-            print('for example, if you have two parameters "a" and "b" and each will')
-            print('have 3 unique values, then the total number of unique (a,b) pairs')
-            print('will be equal to 9, thus yielding a total of 9 total jobs to be')
-            print('to be submitted. Therefore numConcJobs must be less than or equal')
-            print('to 9.')
-        assert numConcJobs <= self.numOfParamSets
 
         # -----------------------------------------------
         # loop over the list of unique parameter sets and
@@ -351,6 +343,14 @@ class ParametricStudy:
         self.allJobs = []
 
         if not self.multipleJobsPerNode:
+            # make sure numConcJobs is less than the number of parameter sets
+            if numConcJobs > self.numOfParamSets:
+                print('numConcJobs is more than needed. Adjusting to needed amount:')
+                while numConcJobs > self.numOfParamSets:
+                    numConcJobs -= 1
+                print('changed to numConcJobs='+str(numConcJobs))
+            assert numConcJobs <= self.numOfParamSets and numConcJobs > 0
+
             # start the first batch of jobs to run simultaneously
             for i in range(numConcJobs):
                 # change to the sub-directory to start the job
@@ -379,6 +379,15 @@ class ParametricStudy:
                 # make sure job list never grows beyond numConcJobs
                 jobIDs.pop(0)
         else:
+            # make sure numConcJobs is in valid range
+            if self.leftOverJobs > 0:
+                self.numNodes += 1
+            if numConcJobs > self.numNodes:
+                print('numConcJobs is more than needed. Adjusting to needed amount:')
+                while numConcJobs > self.numNodes:
+                    numConcJobs -= 1
+                print('changed to numConcJobs='+str(numConcJobs))
+            assert numConcJobs <= self.numNodes and numConcJobs > 0
             # get list of multi-job pbs scripts
             jobScripts = os.listdir(self.startDir+self.studyName+'/jobScripts')
             os.chdir(self.startDir+self.studyName+'/jobScripts')
