@@ -308,7 +308,6 @@ class ParametricStudy:
                             fout.write(line)
                 fin.close()
                 fout.close()
-                print(jobCounter)
 
 
         # inidicate the study has built succefully
@@ -331,8 +330,8 @@ class ParametricStudy:
 
         # make sure numConcJobs is greater than zero
         if numConcJobs < 1:
-            print('0 < numConcJobs.')
-        assert numConcJobs > 1
+            print('numConcJobs < 0.')
+        assert numConcJobs > 0
 
         # -----------------------------------------------
         # loop over the list of unique parameter sets and
