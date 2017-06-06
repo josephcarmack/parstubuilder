@@ -185,7 +185,6 @@ class ParametricStudy:
                 os.remove(tempInFi)
 
             if not self.multipleJobsPerNode:
-                print('testing')
                 # populate sub-directory with pbs file
                 os.system('cp ' + self.defaultPBSFileName + ' ' + pathPlusSub)
 
