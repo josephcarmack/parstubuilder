@@ -8,10 +8,14 @@ myStudy = psb.ParametricStudy(
         defaultPBSFileName='run.pbs',
         lineMod=psb.lineMod,
         parametric_info={
-            'N':[56,100,375],
-            'Ez':[0,12,22]
+            'N':[56,100,375,400,500],
+            'Ez':[0,12,22,30,41]
             }
         )
+
+# uncomment next two lines to test running multiple jobs per node
+# myStudy.multipleJobsPerNode = True
+# myStudy.executableName = 'sleep'
 
 # build the study directory structure and populate with
 # modified input files and job submission scripts

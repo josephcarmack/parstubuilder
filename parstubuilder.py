@@ -9,6 +9,7 @@ class ParametricStudy:
         self.startDir = os.getcwd()+'/'
         self.numOfParamSets = None
         self.subDir = None
+        self.subDirName = None
         self.listOfSets = None
         self.buildComplete = False
         self.allJobs = None
@@ -19,8 +20,10 @@ class ParametricStudy:
         self.parametric_info = None
         self.multipleJobsPerNode = False
         self.executableName = None
+        self._execCommand = None
         self.coresPerNode = 16
         self.coresPerJob = 1
+        self._jobsPerNode = None
         self.numNodes = None
         self.leftOverJobs = None
 
@@ -54,27 +57,16 @@ class ParametricStudy:
 
 
 
-    # special method used to sort list of dictionaries
-    def specialSort(self,dic):
-        crit = []
-        mykeys = sorted(dic.keys())
-        for key in mykeys:
-            crit.append(dic[key])
-        return tuple(crit)
+
+    # -----------------------------------------------
+    # "PRIVATE" methods
+    # -----------------------------------------------
 
 
 
 
-
-    # build parametric study method
-    def build(self):
-
-
-        # ------------------------------------------
-        # check to make sure class members have been
-        # initialized properly
-        # ------------------------------------------
-
+    def checkBuildInit(self):
+        """ Check to make sure that the build method was initialized properly."""
         classMembers = {
                 'studyName':self.studyName,
                 'defaultInputFileName':self.defaultInputFileName,
@@ -102,20 +94,14 @@ class ParametricStudy:
                 print('must define the executableName attribute with the')
                 print('executable file\'s name (string type).')
                 goodInitialization = False
-        assert goodInitialization
+        return goodInitialization
 
-        # -----------------------------
-        # create main study directory
-        # -----------------------------
 
-        os.makedirs(self.startDir + self.studyName)
 
-        # ------------------------------------------------
-        # create subdirectories, input files, executables,
-        # and PBS files for the parametric study (i.e.
-        # one for each unique set of parameters)
-        # ------------------------------------------------
 
+
+    def calcNumUniqueParamSets(self):
+        """Calculate the number of unique parameter sets in the parametric study."""
         # calculate the total number of unique parameter sets
         self.numOfParamSets = 1
         for k in sorted(self.parametric_info):
@@ -142,34 +128,59 @@ class ParametricStudy:
                     val_i = 0
             skip *= numParValues
 
-        # sort parameter sets list
+        # sort the list of parameter sets
         self.listOfSets.sort(key=self.specialSort)
 
-        # --------------------------------------------------------------------
-        # loop over list of unique param sets and create directories and files
-        # --------------------------------------------------------------------
+
+
+
+
+    def specialSort(self,dic):
+        """special sort function for sorting listOfSets."""
+        crit = []
+        mykeys = sorted(dic.keys())
+        for key in mykeys:
+            crit.append(dic[key])
+        return tuple(crit)
+
+
+
+
+
+    def createDirStructure(self):
+        """Create the main study directory and a sub-directory for each parameter set."""
+        # make the main study directory
+        os.makedirs(self.startDir + self.studyName)
 
         self.subDir = []
+        self.subDirName = []
         for s in self.listOfSets:
 
             # create sub directories
-            subDirName = '/'
+            name = ''
             for param in sorted(s):
-                subDirName += str(param)+str(s[param])
-            pathPlusSub = self.startDir+self.studyName+subDirName
+                name += str(param)+str(s[param])
+            pathPlusSub = self.startDir+self.studyName+'/'+name
+            self.subDirName.append(name)
             self.subDir.append(pathPlusSub)
 
             os.makedirs(pathPlusSub)
 
+
+
+
+
+    def createInputFiles(self):
+        for i, s in enumerate(self.listOfSets):
             # populate sub-directory with input file
-            os.system('cp ' + self.defaultInputFileName + ' ' + pathPlusSub)
+            os.system('cp ' + self.defaultInputFileName + ' ' + self.subDir[i])
 
             # modify input file by looping over each parameter to be modified
             for par in sorted(s):
                 # input file in current sub-directory
-                curInFi = pathPlusSub+'/'+self.defaultInputFileName
+                curInFi = self.subDir[i]+'/'+self.defaultInputFileName
                 # create temporary copy of input file
-                tempInFi = pathPlusSub+'/temp'
+                tempInFi = self.subDir[i]+'/temp'
                 shutil.copy(curInFi,tempInFi)
                 # read from temp and write modified version to original
                 with open(tempInFi,'r') as fin:
@@ -184,254 +195,319 @@ class ParametricStudy:
                 fin.close()
                 os.remove(tempInFi)
 
-            if not self.multipleJobsPerNode:
-                # populate sub-directory with pbs file
-                os.system('cp ' + self.defaultPBSFileName + ' ' + pathPlusSub)
 
-                # modify pbs file's job name
-                # create temporary copy of pbs file
-                curPbsFi = pathPlusSub+'/'+self.defaultPBSFileName
-                tempPbsFi = pathPlusSub+'/temp'
-                shutil.copy(curPbsFi,tempPbsFi)
-                with open(tempPbsFi,'r') as fin:
-                    with open(curPbsFi,'w') as fout:
-                        for line in fin:
-                            if '#PBS -N ' in line:
-                                fout.write('#PBS -N '+subDirName[1:]+'\n')
-                            else:
-                                fout.write(line)
-                fout.close()
-                fin.close()
-                os.remove(tempPbsFi)
 
-        # ------------------------------------
-        # Running multiple jobs per node setup
-        # ------------------------------------
 
-        if self.multipleJobsPerNode:
-            # get the executable command line from the default PBS file
-            execCommand = None
-            with open(self.defaultPBSFileName) as fin:
+
+    def setupJobScripts(self):
+        """Create job scripts for jobs that use 1 or more node."""
+        # create a job script for each unique parameter set
+        for i, s in enumerate(self.listOfSets):
+            # populate sub-directory with pbs file
+            os.system('cp ' + self.defaultPBSFileName + ' ' + self.subDir[i])
+
+            # modify pbs file's job name
+            # create temporary copy of pbs file
+            curPbsFi = self.subDir[i]+'/'+self.defaultPBSFileName
+            tempPbsFi = self.subDir[i]+'/temp'
+            shutil.copy(curPbsFi,tempPbsFi)
+            with open(tempPbsFi,'r') as fin:
+                with open(curPbsFi,'w') as fout:
+                    for line in fin:
+                        if '#PBS -N ' in line:
+                            fout.write('#PBS -N '+self.subDirName[i]+'\n')
+                        else:
+                            fout.write(line)
+            fout.close()
+            fin.close()
+            os.remove(tempPbsFi)
+
+
+
+
+
+    def findExecCommand(self):
+        "Finds the executable command in the default pbs script."""
+        # get the executable command line from the default PBS file
+        with open(self.defaultPBSFileName) as fin:
+            for line in fin:
+                if self.executableName in line:
+                    self._execCommand = line
+        fin.close
+        # strip off new line character from executable command
+        self._execCommand = self._execCommand.split('\n')[0]
+
+        # check that the executable command was found in the PBS file
+        if self._execCommand == None:
+            print('could not find executable command line in')
+            print(self.defaultPBSFileName +'. No instance of')
+            print('"'+self.executableName+'" in '+self.defaultPBSFileName+'.')
+            return False
+        else:
+            return True
+
+
+
+
+
+    def calcNumNodesNeeded(self):
+        """Calculate how many nodes are needed for the multiple jobs per case."""
+        print('Proceeding with the assumption that each node has '+str(self.coresPerNode)+' cores')
+        print('and each job will run on only '+str(self.coresPerJob)+' core(s). If this is not the')
+        print('case, restart and define the ParametricStudy attributes')
+        print('"coresPerNode" and "coresPerJob" with the appropriate values.')
+        self._jobsPerNode = int(int(self.coresPerNode)/int(self.coresPerJob))
+        if self._jobsPerNode < 1 or self._jobsPerNode > self.coresPerNode:
+            print('invalid value for either "coresPerNode" attribute or "coresPerJob" attribute.')
+            raise AssertionError
+        self.numNodes = int(int(self.numOfParamSets)/int(self._jobsPerNode))
+        self.leftOverJobs = int(int(self.numOfParamSets)%int(self._jobsPerNode))
+
+
+
+
+
+    def setupMultipleJobsPerNode(self):
+        """Create job scripts that run more than one job per node."""
+        # create directory for job scripts and populate with needed pbs files
+        os.makedirs(self.startDir+self.studyName+'/jobScripts')
+        jobCounter = 0
+        jstart = 0
+        jend = 0
+        for i in range(self.numNodes):
+            jstart = i*self._jobsPerNode+1
+            jend = (i+1)*self._jobsPerNode
+            jnum = str(jstart)+'-'+str(jend)
+            curPbsFi = self.startDir+self.studyName+'/jobScripts/jobs'+jnum+'.pbs'
+            os.system('cp '+self.startDir+self.defaultPBSFileName+' '+curPbsFi)
+
+            # alter the pbs script to run jobs assigned it
+            with open(self.defaultPBSFileName,'r') as fin:
+                with open(curPbsFi,'w') as fout:
+                    for line in fin:
+                        if '#PBS -N ' in line:
+                            fout.write('#PBS -N jobs'+jnum+'\n')
+                        elif self.executableName in line:
+                            fout.write('# go to job sub-directories and start jobs then wait\n')
+                            writeStart = fout.tell()
+                            break
+                        else:
+                            fout.write(line)
+
+                    # write bash code to pbs file that starts and waits for jobs assigned this file
+                    for j in range(self._jobsPerNode):
+                        fout.write('cd '+self.subDir[jobCounter]+'\n')
+                        fout.write(self._execCommand+'&\n')
+                        jobCounter += 1
+                    fout.write('wait\n')
+                    # write the rest of the lines from the default pbs file
+                    for line in fin:
+                        fout.write(line)
+            fin.close()
+            fout.close()
+
+        return jend,jobCounter
+
+
+
+
+        
+    def handleLeftOverJobs(self,jend,jobCounter):
+        """Handle setup last node when their are left over jobs that do not fill an entire node."""
+        print('jend='+str(jend))
+        jstart = jend + 1
+        jend = jend + self.leftOverJobs
+        jnum = str(jstart)+'-'+str(jend)
+        curPbsFi = self.startDir+self.studyName+'/jobScripts/jobs'+jnum+'.pbs'
+        os.system('cp '+self.startDir+self.defaultPBSFileName+' '+curPbsFi)
+
+        # alter the pbs script to run jobs assigned it
+        with open(self.defaultPBSFileName,'r') as fin:
+            with open(curPbsFi,'w') as fout:
                 for line in fin:
-                    if self.executableName in line:
-                        execCommand = line
-            fin.close
-            # strip off new line character from executable command
-            execCommand = execCommand.split('\n')[0]
+                    if '#PBS -N ' in line:
+                        fout.write('#PBS -N jobs'+jnum+'\n')
+                    elif self.executableName in line:
+                        fout.write('# go to job sub-directories and start jobs then wait\n')
+                        writeStart = fout.tell()
+                        break
+                    else:
+                        fout.write(line)
 
-            # check that the executable command was found in the PBS file
-            if execCommand == None:
-                print('could not find executable command line in')
-                print(self.defaultPBSFileName +'. No instance of')
-                print('"'+self.executableName+'" in '+self.defaultPBSFileName+'.')
-                raise AssertionError
-
-            # figure out how many nodes are going to be needed
-            print('Proceeding with the assumption that each node has '+str(self.coresPerNode)+' cores')
-            print('and each job will run on only '+str(self.coresPerJob)+' core(s). If this is not the')
-            print('case, restart and define the ParametricStudy attributes')
-            print('"coresPerNode" and "coresPerJob" with the appropriate values.')
-            jobsPerNode = int(int(self.coresPerNode)/int(self.coresPerJob))
-            if jobsPerNode < 1 or jobsPerNode > self.coresPerNode:
-                print('invalid value for either "coresPerNode" attribute or "coresPerJob" attribute.')
-                raise AssertionError
-            self.numNodes = int(int(self.numOfParamSets)/int(jobsPerNode))
-            self.leftOverJobs = int(int(self.numOfParamSets)%int(jobsPerNode))
-
-            # create directory for job scripts and populate with needed pbs files
-            os.makedirs(self.startDir+self.studyName+'/jobScripts')
-            jobCounter = 0
-            jstart = 0
-            jend = 0
-            for i in range(self.numNodes):
-                jstart = i*jobsPerNode+1
-                jend = (i+1)*jobsPerNode
-                jnum = str(jstart)+'-'+str(jend)
-                curPbsFi = self.startDir+self.studyName+'/jobScripts/jobs'+jnum+'.pbs'
-                os.system('cp '+self.startDir+self.defaultPBSFileName+' '+curPbsFi)
-
-                # alter the pbs script to run jobs assigned it
-                with open(self.defaultPBSFileName,'r') as fin:
-                    with open(curPbsFi,'w') as fout:
-                        for line in fin:
-                            if '#PBS -N ' in line:
-                                fout.write('#PBS -N jobs'+jnum+'\n')
-                            elif self.executableName in line:
-                                fout.write('# go to job sub-directories and start jobs then wait\n')
-                                writeStart = fout.tell()
-                                break
-                            else:
-                                fout.write(line)
-
-                        # write bash code to pbs file that starts and waits for jobs assigned this file
-                        for j in range(jobsPerNode):
-                            fout.write('cd '+self.subDir[jobCounter]+'\n')
-                            fout.write(execCommand+'&\n')
-                            jobCounter += 1
-                        fout.write('wait\n')
-                        # write the rest of the lines from the default pbs file
-                        for line in fin:
-                            fout.write(line)
-                fin.close()
-                fout.close()
-
-            # handle case when using only some cores of the last node
-            if self.leftOverJobs > 0:
-                jstart = jend + 1
-                jend = jend + self.leftOverJobs
-                jnum = str(jstart)+'-'+str(jend)
-                curPbsFi = self.startDir+self.studyName+'/jobScripts/jobs'+jnum+'.pbs'
-                os.system('cp '+self.startDir+self.defaultPBSFileName+' '+curPbsFi)
-
-                # alter the pbs script to run jobs assigned it
-                with open(self.defaultPBSFileName,'r') as fin:
-                    with open(curPbsFi,'w') as fout:
-                        for line in fin:
-                            if '#PBS -N ' in line:
-                                fout.write('#PBS -N jobs'+jnum+'\n')
-                            elif self.executableName in line:
-                                fout.write('# go to job sub-directories and start jobs then wait\n')
-                                writeStart = fout.tell()
-                                break
-                            else:
-                                fout.write(line)
-
-                        # write bash code to pbs file that starts and waits for jobs assigned this file
-                        for j in range(self.leftOverJobs):
-                            fout.write('cd '+self.subDir[jobCounter]+'\n')
-                            fout.write(execCommand+'&\n')
-                            jobCounter += 1
-                        fout.write('wait\n')
-                        # write the rest of the lines from the default pbs file
-                        for line in fin:
-                            fout.write(line)
-                fin.close()
-                fout.close()
+                # write bash code to pbs file that starts and waits for jobs assigned this file
+                for j in range(self.leftOverJobs):
+                    fout.write('cd '+self.subDir[jobCounter]+'\n')
+                    fout.write(self._execCommand+'&\n')
+                    jobCounter += 1
+                fout.write('wait\n')
+                # write the rest of the lines from the default pbs file
+                for line in fin:
+                    fout.write(line)
+        fin.close()
+        fout.close()
 
 
-        # inidicate the study has built succefully
-        self.buildComplete = True
 
 
-    def hpcExecute(self,numConcJobs):
 
+    def _checkHpcExecInit(self,numConcJobs):
+        """Make sure study was initialized correctly for running the hpcExecute method."""
         # make sure build method has been called aready
         if not self.buildComplete:
             print('You must run the build method before running the hpcExecute method')
         assert self.buildComplete
 
-        # -----------------------
         # check for correct input
-        # -----------------------
-
-        # convert numConcJobs to an integer if it is not already
-        numConcJobs = int(numConcJobs)
-
-        # make sure numConcJobs is greater than zero
         if numConcJobs < 1:
             print('numConcJobs < 0.')
+        # convert numConcJobs to an integer if it is not already
+        numConcJobs = int(numConcJobs)
         assert numConcJobs > 0
 
-        # -----------------------------------------------
-        # loop over the list of unique parameter sets and
-        # submit them to the HPC
-        # -----------------------------------------------
 
+
+
+
+    def _launchJobs(self,numConcJobs):
+        """Launches 1 or more jobs per node on the HPC using qsub."""
         jobIDs = []
-        self.allJobs = []
+        # make sure numConcJobs is less than the number of parameter sets
+        if numConcJobs > self.numOfParamSets:
+            print('numConcJobs is more than needed. Adjusting to needed amount:')
+            while numConcJobs > self.numOfParamSets:
+                numConcJobs -= 1
+            print('changed to numConcJobs='+str(numConcJobs))
+        assert numConcJobs <= self.numOfParamSets and numConcJobs > 0
 
+        # start the first batch of jobs to run simultaneously
+        for i in range(numConcJobs):
+            # change to the sub-directory to start the job
+            os.chdir(self.subDir[i])
+            # build the command to submit job to the HPC
+            cmd = ['qsub',self.defaultPBSFileName]
+            # submit the job and get the job ID
+            jID = sp.check_output(cmd)
+            # store the job ID in a list
+            jobIDs.append(jID.split('.')[0])
+            # keep a running list of all job IDs
+            self.allJobs.append(jID.split('.')[0])
+
+        # start the rest of the jobs on hold until the first batch finishes
+        for sd in self.subDir[numConcJobs:]:
+            os.chdir(sd)
+            jobStr = jobIDs[0]
+            # build the command to submit job to the HPC
+            cmd = ['qsub','-W','depend=afterany:'+jobStr,self.defaultPBSFileName]
+            # submit the job and get the job ID
+            jID = sp.check_output(cmd)
+            # store the job ID in a list
+            jobIDs.append(jID.split('.')[0])
+            # update running list of all job IDs
+            self.allJobs.append(jID.split('.')[0])
+            # make sure job list never grows beyond numConcJobs
+            jobIDs.pop(0)
+
+
+
+
+
+    def _launchMultiJobsPerNode(self,numConcJobs):
+        """Launches multiple jobs per node on the HPC using qsub."""
+        jobIDs = []
+        # make sure numConcJobs is in valid range
+        if self.leftOverJobs > 0:
+            self.numNodes += 1
+        if numConcJobs > self.numNodes:
+            print('numConcJobs is more than needed. Adjusting to needed amount:')
+            while numConcJobs > self.numNodes:
+                numConcJobs -= 1
+            print('changed to numConcJobs='+str(numConcJobs))
+        assert numConcJobs <= self.numNodes and numConcJobs > 0
+        # get list of multi-job pbs scripts
+        jobScripts = os.listdir(self.startDir+self.studyName+'/jobScripts')
+        os.chdir(self.startDir+self.studyName+'/jobScripts')
+        # start the first batch of jobs to run simultaneously
+        for i in range(numConcJobs):
+            # build the command to submit job to the HPC
+            cmd = ['qsub',jobScripts[i]]
+            # submit the job and get the job ID
+            jID = sp.check_output(cmd)
+            # store the job ID in a list
+            jobIDs.append(jID.split('.')[0])
+            # keep a running list of all job IDs
+            self.allJobs.append(jID.split('.')[0])
+
+        # start the rest of the jobs on hold until the first batch finishes
+        for js in jobScripts[numConcJobs:]:
+            jobStr = jobIDs[0]
+            # build the command to submit job to the HPC
+            cmd = ['qsub','-W','depend=afterany:'+jobStr,js]
+            # submit the job and get the job ID
+            jID = sp.check_output(cmd)
+            # store the job ID in a list
+            jobIDs.append(jID.split('.')[0])
+            # update running list of all job IDs
+            self.allJobs.append(jID.split('.')[0])
+            # make sure job list never grows beyond numConcJobs
+            jobIDs.pop(0)
+
+
+
+
+
+
+
+    # -----------------------------------------------
+    # "PUBLIC" METHODS
+    # -----------------------------------------------
+
+
+
+
+
+    def build(self):
+        """Build the parametric study directories and files."""
+        assert(self.checkBuildInit())
+        self.calcNumUniqueParamSets()
+        self.createDirStructure()
+        self.createInputFiles()
         if not self.multipleJobsPerNode:
-            # make sure numConcJobs is less than the number of parameter sets
-            if numConcJobs > self.numOfParamSets:
-                print('numConcJobs is more than needed. Adjusting to needed amount:')
-                while numConcJobs > self.numOfParamSets:
-                    numConcJobs -= 1
-                print('changed to numConcJobs='+str(numConcJobs))
-            assert numConcJobs <= self.numOfParamSets and numConcJobs > 0
-
-            # start the first batch of jobs to run simultaneously
-            for i in range(numConcJobs):
-                # change to the sub-directory to start the job
-                os.chdir(self.subDir[i])
-                # build the command to submit job to the HPC
-                cmd = ['qsub',self.defaultPBSFileName]
-                # submit the job and get the job ID
-                jID = sp.check_output(cmd)
-                # store the job ID in a list
-                jobIDs.append(jID.split('.')[0])
-                # keep a running list of all job IDs
-                self.allJobs.append(jID.split('.')[0])
-
-            # start the rest of the jobs on hold until the first batch finishes
-            for sd in self.subDir[numConcJobs:]:
-                os.chdir(sd)
-                jobStr = jobIDs[0]
-                # build the command to submit job to the HPC
-                cmd = ['qsub','-W','depend=afterany:'+jobStr,self.defaultPBSFileName]
-                # submit the job and get the job ID
-                jID = sp.check_output(cmd)
-                # store the job ID in a list
-                jobIDs.append(jID.split('.')[0])
-                # update running list of all job IDs
-                self.allJobs.append(jID.split('.')[0])
-                # make sure job list never grows beyond numConcJobs
-                jobIDs.pop(0)
+            self.setupJobScripts()
         else:
-            # make sure numConcJobs is in valid range
+            assert(self.findExecCommand())
+            self.calcNumNodesNeeded()
+            je,jc = self.setupMultipleJobsPerNode()
             if self.leftOverJobs > 0:
-                self.numNodes += 1
-            if numConcJobs > self.numNodes:
-                print('numConcJobs is more than needed. Adjusting to needed amount:')
-                while numConcJobs > self.numNodes:
-                    numConcJobs -= 1
-                print('changed to numConcJobs='+str(numConcJobs))
-            assert numConcJobs <= self.numNodes and numConcJobs > 0
-            # get list of multi-job pbs scripts
-            jobScripts = os.listdir(self.startDir+self.studyName+'/jobScripts')
-            os.chdir(self.startDir+self.studyName+'/jobScripts')
-            # start the first batch of jobs to run simultaneously
-            for i in range(numConcJobs):
-                # build the command to submit job to the HPC
-                cmd = ['qsub',jobScripts[i]]
-                # submit the job and get the job ID
-                jID = sp.check_output(cmd)
-                # store the job ID in a list
-                jobIDs.append(jID.split('.')[0])
-                # keep a running list of all job IDs
-                self.allJobs.append(jID.split('.')[0])
+                self.handleLeftOverJobs(je,jc)
+        self.buildComplete = True
 
-            # start the rest of the jobs on hold until the first batch finishes
-            for js in jobScripts[numConcJobs:]:
-                jobStr = jobIDs[0]
-                # build the command to submit job to the HPC
-                cmd = ['qsub','-W','depend=afterany:'+jobStr,js]
-                # submit the job and get the job ID
-                jID = sp.check_output(cmd)
-                # store the job ID in a list
-                jobIDs.append(jID.split('.')[0])
-                # update running list of all job IDs
-                self.allJobs.append(jID.split('.')[0])
-                # make sure job list never grows beyond numConcJobs
-                jobIDs.pop(0)
 
-        # -----------------------------------------------
-        # write job ID's to the file 'jobIDs.txt'
-        # -----------------------------------------------
+
+
+
+    def hpcExecute(self,numConcJobs):
+        """Start parametric study jobs on the HPC using the "qsub" command."""
+        self._checkHpcExecInit(numConcJobs)
+        self.allJobs = []
+        if not self.multipleJobsPerNode:
+            self._launchJobs(numConcJobs)
+        else:
+            self._launchMultiJobsPerNode(numConcJobs)
 
         # change back to the starting directory
         os.chdir(self.startDir+self.studyName)
+        # write job IDs to a file in case they need to be deleted later
         with open('jobIDs.txt','w') as fout:
             for jobID in self.allJobs:
                 fout.write(jobID+'\n')
         fout.close()
 
 
+
+
+
     def batchDelete(self):
-
-        # -----------------------------------------------
-        # check that study is defined and valid
-        # -----------------------------------------------
-
+        """Delete all the jobs running on the HPC for a given parametric study."""
         # checking for jobID.txt file existence
         assert os.path.isfile(self.startDir+'/'+self.studyName+'/jobIDs.txt')
 
@@ -454,7 +530,18 @@ class ParametricStudy:
                     print('exception caught: '+ type(e).__name__)
         fin.close()
 
-# lineMod function that works for MESO
+
+
+
+
+
+# -----------------------------------------------
+# Functions that are not class methods
+# -----------------------------------------------
+
+
+
+
 
 def lineMod(line,par,par_value):
     rep_value = str(par_value)+str('\n')
