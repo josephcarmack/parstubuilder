@@ -107,7 +107,11 @@ class ParametricStudy:
         # calculate the total number of unique parameter sets
         self._numOfParamSets = 1
         for k in sorted(self.parametric_info):
-            self._numOfParamSets *= len(self.parametric_info[k])
+            # check for grouped parameters
+            if type(self.parametric_info[k][0]) == list:
+                self._numOfParamSets *= len(self.parametric_info[k][0])
+            else:
+                self._numOfParamSets *= len(self.parametric_info[k])
 
         # make a list that holds a dictionary for each unique parameter set
         container = self.parametric_info.copy()
@@ -119,11 +123,22 @@ class ParametricStudy:
 
         # calculate each unique parameter set
         skip = 1
-        for parameter in sorted(self.parametric_info):
-            numParValues = len(self.parametric_info[parameter])
+        # iterate over each parameter or group of parameters in parametric_info
+        for p in sorted(self.parametric_info):
+            # grouped parameter values are stored in parametric_info as a list of lists.
+            # i.e. one list for each grouped parameter
+            if type(self.parametric_info[p][0])==list:
+                numParValues = len(self.parametric_info[p][0])
+            else:
+                numParValues = len(self.parametric_info[p])
             val_i =0
-            for i in range(self._numOfParamSets):
-                self._listOfSets[i][parameter] = self.parametric_info[parameter][val_i]
+            for i, pSet in enumerate(self._listOfSets):
+                if type(self.parametric_info[p][0])==list:
+                    pSet[p] = []
+                    for grpPar in self.parametric_info[p]:
+                        pSet[p].append(grpPar[val_i])
+                else:
+                    pSet[p] = self.parametric_info[p][val_i]
                 if i%skip == 0:
                     val_i += 1
                 if val_i == numParValues:
@@ -154,18 +169,25 @@ class ParametricStudy:
         # make the main study directory
         os.makedirs(self._startDir + self.studyName)
 
+        # create sub directory names
         self._subDir = []
         self._subDirName = []
         for s in self._listOfSets:
-
-            # create sub directories
             name = ''
             for param in sorted(s):
-                name += str(param)+str(s[param])
+                # check for grouped parameters
+                if type(s[param]) == list:
+                    name += str(param)
+                    for val in s[param]:
+                        name += '-'+str(val)
+                else:
+                    name += str(param)+str(s[param])
+            # create path to sub-directory
             pathPlusSub = self._startDir+self.studyName+'/'+name
+            # save sub-directory name and path for later use
             self._subDirName.append(name)
             self._subDir.append(pathPlusSub)
-
+            # create the sub-directory
             os.makedirs(pathPlusSub)
 
 
@@ -473,7 +495,7 @@ class ParametricStudy:
         self._calcNumUniqueParamSets()
         self._createDirStructure()
         self._createInputFiles()
-        if not self._multipleJobsPerNode:
+        if not self.multipleJobsPerNode:
             self._setupJobScripts()
         else:
             assert(self._findExecCommand())
