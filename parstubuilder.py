@@ -67,7 +67,7 @@ class ParametricStudy:
 
 
 
-    def checkBuildInit(self):
+    def _checkBuildInit(self):
         """ Check to make sure that the build method was initialized properly."""
         classMembers = {
                 'studyName':self.studyName,
@@ -102,7 +102,7 @@ class ParametricStudy:
 
 
 
-    def calcNumUniqueParamSets(self):
+    def _calcNumUniqueParamSets(self):
         """Calculate the number of unique parameter sets in the parametric study."""
         # calculate the total number of unique parameter sets
         self._numOfParamSets = 1
@@ -131,13 +131,13 @@ class ParametricStudy:
             skip *= numParValues
 
         # sort the list of parameter sets
-        self._listOfSets.sort(key=self.specialSort)
+        self._listOfSets.sort(key=self._specialSort)
 
 
 
 
 
-    def specialSort(self,dic):
+    def _specialSort(self,dic):
         """special sort function for sorting _listOfSets."""
         crit = []
         mykeys = sorted(dic.keys())
@@ -149,7 +149,7 @@ class ParametricStudy:
 
 
 
-    def createDirStructure(self):
+    def _createDirStructure(self):
         """Create the main study directory and a sub-directory for each parameter set."""
         # make the main study directory
         os.makedirs(self._startDir + self.studyName)
@@ -172,7 +172,7 @@ class ParametricStudy:
 
 
 
-    def createInputFiles(self):
+    def _createInputFiles(self):
         for i, s in enumerate(self._listOfSets):
             # populate sub-directory with input file
             os.system('cp ' + self.defaultInputFileName + ' ' + self._subDir[i])
@@ -201,7 +201,7 @@ class ParametricStudy:
 
 
 
-    def setupJobScripts(self):
+    def _setupJobScripts(self):
         """Create job scripts for jobs that use 1 or more node."""
         # create a job script for each unique parameter set
         for i, s in enumerate(self._listOfSets):
@@ -228,7 +228,7 @@ class ParametricStudy:
 
 
 
-    def findExecCommand(self):
+    def _findExecCommand(self):
         "Finds the executable command in the default pbs script."""
         # get the executable command line from the default PBS file
         with open(self.defaultPBSFileName) as fin:
@@ -252,7 +252,7 @@ class ParametricStudy:
 
 
 
-    def calcNumNodesNeeded(self):
+    def _calcNumNodesNeeded(self):
         """Calculate how many nodes are needed for the multiple jobs per case."""
         print('Proceeding with the assumption that each node has '+str(self.coresPerNode)+' cores')
         print('and each job will run on only '+str(self.coresPerJob)+' core(s). If this is not the')
@@ -269,7 +269,7 @@ class ParametricStudy:
 
 
 
-    def setupMultipleJobsPerNode(self):
+    def _setupMultipleJobsPerNode(self):
         """Create job scripts that run more than one job per node."""
         # create directory for job scripts and populate with needed pbs files
         os.makedirs(self._startDir+self.studyName+'/jobScripts')
@@ -314,7 +314,7 @@ class ParametricStudy:
 
 
         
-    def handleLeftOverJobs(self,jend,jobCounter):
+    def _handleLeftOverJobs(self,jend,jobCounter):
         """Handle setup last node when their are left over jobs that do not fill an entire node."""
         print('jend='+str(jend))
         jstart = jend + 1
@@ -469,18 +469,18 @@ class ParametricStudy:
 
     def build(self):
         """Build the parametric study directories and files."""
-        assert(self.checkBuildInit())
-        self.calcNumUniqueParamSets()
-        self.createDirStructure()
-        self.createInputFiles()
-        if not self.multipleJobsPerNode:
-            self.setupJobScripts()
+        assert(self._checkBuildInit())
+        self._calcNumUniqueParamSets()
+        self._createDirStructure()
+        self._createInputFiles()
+        if not self._multipleJobsPerNode:
+            self._setupJobScripts()
         else:
-            assert(self.findExecCommand())
-            self.calcNumNodesNeeded()
-            je,jc = self.setupMultipleJobsPerNode()
+            assert(self._findExecCommand())
+            self._calcNumNodesNeeded()
+            je,jc = self._setupMultipleJobsPerNode()
             if self._leftOverJobs > 0:
-                self.handleLeftOverJobs(je,jc)
+                self._handleLeftOverJobs(je,jc)
         self._buildComplete = True
 
 
