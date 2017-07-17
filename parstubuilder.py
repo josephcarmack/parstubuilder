@@ -194,30 +194,59 @@ class ParametricStudy:
 
 
 
+    def _modInputFile(self,param,value,curInFi):
+        """Uses lineMod function to modify input file parameters."""
+        # create temporary copy of input file
+        tempInFi = os.getcwd()+'/temp'
+        shutil.copy(curInFi,tempInFi)
+        # read from temp and write modified version to original
+        with open(tempInFi,'r') as fin:
+            with open(curInFi,'w') as fout:
+                print(param,value)
+                print('temp:')
+                print(fin.read())
+                fin.seek(0)
+                for line in fin:
+                    if param in line:
+                        print('found param, now lets modify it:')
+                        print('line =',line)
+                        modifiedLine = self.lineMod(line,param,value)
+                        print('modify to:',modifiedLine)
+                        print('-------------------')
+                        fout.write(modifiedLine)
+                    else:
+                        fout.write(line)
+        fout.close()
+        fin.close()
+        os.remove(tempInFi)
+
+
+
+
+
+
     def _createInputFiles(self):
+        """Copy default input file to sub-directories and modify each one accordingly."""
         for i, s in enumerate(self._listOfSets):
             # populate sub-directory with input file
             os.system('cp ' + self.defaultInputFileName + ' ' + self._subDir[i])
-
+            # input file in current sub-directory
+            inputFile = self._subDir[i]+'/'+self.defaultInputFileName
+            
+            print(s)
             # modify input file by looping over each parameter to be modified
             for par in sorted(s):
-                # input file in current sub-directory
-                curInFi = self._subDir[i]+'/'+self.defaultInputFileName
-                # create temporary copy of input file
-                tempInFi = self._subDir[i]+'/temp'
-                shutil.copy(curInFi,tempInFi)
-                # read from temp and write modified version to original
-                with open(tempInFi,'r') as fin:
-                    with open(curInFi,'w') as fout:
-                        for line in fin:
-                            if par in line:
-                                modifiedLine = self.lineMod(line,par,s[par])
-                                fout.write(modifiedLine)
-                            else:
-                                fout.write(line)
-                fout.close()
-                fin.close()
-                os.remove(tempInFi)
+                # check for grouped parameters
+                if type(s[par])==list:
+                    paramNames = par.split('-')
+                    # check that grouped parameters were grouped with assumed syntax
+                    assert(len(paramNames)==len(s[par]))
+                    # modify each of the grouped params in the input file
+                    for n,val in enumerate(s[par]):
+                        self._modInputFile(paramNames[n],val,inputFile)
+                else:
+                    # change input file for single non-grouped parameter
+                    self._modInputFile(par,s[par],inputFile)
 
 
 

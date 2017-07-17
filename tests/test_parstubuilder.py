@@ -280,7 +280,7 @@ def test_modify_input_file_with_param_group():
             parametric_info={'a-b':[aPars,bPars]}
             )
     myStudy.build()
-    with open('study_name/a0b4/input.dat') as fin:
+    with open('study_name/a-b-0-4/input.dat') as fin:
         contents = fin.read()
         fin.seek(0)
         checks = []
