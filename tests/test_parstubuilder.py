@@ -93,9 +93,9 @@ def test_create_study_dir():
         myStudy.build()
     except OSError:
         pass
-    existing = os.path.isdir(myStudy.startDir+myStudy.studyName)
+    existing = os.path.isdir(myStudy._startDir+myStudy.studyName)
     if existing:
-        shutil.rmtree(myStudy.startDir+myStudy.studyName)
+        shutil.rmtree(myStudy._startDir+myStudy.studyName)
     assert existing
 
 
@@ -107,10 +107,10 @@ def test_create_existing_study_dir():
             lineMod=myLineMod,
             parametric_info={'par1':[0,1,2],'par2':[3,4,5]}
             )
-    os.makedirs(myStudy.startDir+myStudy.studyName)
+    os.makedirs(myStudy._startDir+myStudy.studyName)
     with pytest.raises(OSError):
         myStudy.build()
-    shutil.rmtree(myStudy.startDir+myStudy.studyName)
+    shutil.rmtree(myStudy._startDir+myStudy.studyName)
 
 
 def test_create_study_subdir():
@@ -123,9 +123,9 @@ def test_create_study_subdir():
             )
     myStudy.build()
     numOfSubDirs = 0
-    for p,d,f in os.walk(myStudy.startDir+myStudy.studyName):
+    for p,d,f in os.walk(myStudy._startDir+myStudy.studyName):
         numOfSubDirs += len(d)
-    shutil.rmtree(myStudy.startDir+myStudy.studyName)
+    shutil.rmtree(myStudy._startDir+myStudy.studyName)
     assert numOfSubDirs == 9
 
 
@@ -139,9 +139,9 @@ def test_subdir_file_creation():
             )
     myStudy.build()
     numOfFiles = 0
-    for p,d,f in os.walk(myStudy.startDir+myStudy.studyName):
+    for p,d,f in os.walk(myStudy._startDir+myStudy.studyName):
         numOfFiles += len(f)
-    shutil.rmtree(myStudy.startDir+myStudy.studyName)
+    shutil.rmtree(myStudy._startDir+myStudy.studyName)
     assert numOfFiles == 18
 
 
@@ -162,11 +162,11 @@ def test_input_file_modification():
                     fin.close()
                     os.system('echo contents of failed input file:')
                     os.system('cat '+myStudy.studyName+'/a0b3/input.dat')
-                    shutil.rmtree(myStudy.startDir+myStudy.studyName)
+                    shutil.rmtree(myStudy._startDir+myStudy.studyName)
                     assert good
                 else:
                     fin.close()
-                    shutil.rmtree(myStudy.startDir+myStudy.studyName)
+                    shutil.rmtree(myStudy._startDir+myStudy.studyName)
                     break
 
 
@@ -189,7 +189,7 @@ def test_pbs_file_modification():
     if not good:
         print('failed pbs file contents:')
         print(contents)
-    shutil.rmtree(myStudy.startDir+myStudy.studyName)
+    shutil.rmtree(myStudy._startDir+myStudy.studyName)
     assert good
 
 
@@ -208,7 +208,7 @@ def test_mulit_jobs_per_node_create_scripts_dir():
     if not good:
         print('contents of study directory:')
         os.system('ls study_name')
-    shutil.rmtree(myStudy.startDir+myStudy.studyName)
+    shutil.rmtree(myStudy._startDir+myStudy.studyName)
     assert good
 
 
@@ -226,7 +226,7 @@ def test_multi_jobs_per_node_create_submission_scripts():
     good = os.path.isfile('study_name/jobScripts/jobs1-16.pbs')
     if not good:
         os.system('ls study_name/jobScripts')
-    shutil.rmtree(myStudy.startDir+myStudy.studyName)
+    shutil.rmtree(myStudy._startDir+myStudy.studyName)
     assert good
 
 
@@ -244,7 +244,7 @@ def test_multi_jobs_per_node_partial_node_use():
     good = os.path.isfile('study_name/jobScripts/jobs17-20.pbs')
     if not good:
         os.system('ls study_name/jobScripts')
-    shutil.rmtree(myStudy.startDir+myStudy.studyName)
+    shutil.rmtree(myStudy._startDir+myStudy.studyName)
     assert good
 
 
@@ -263,3 +263,80 @@ def test_hpcExecute_without_building_study():
     myStudy = ps()
     with pytest.raises(AssertionError):
         myStudy.hpcExecute(3)
+
+
+# --------------------------
+# paramter grouping tests
+# --------------------------
+
+def test_modify_input_file_with_param_group():
+    aPars = [0,1,2,3]
+    bPars = [4,5,6,7]
+    myStudy = ps(
+            studyName='study_name',
+            defaultInputFileName='input.dat',
+            defaultPBSFileName='run.pbs',
+            lineMod=myLineMod,
+            parametric_info={'a-b':[aPars,bPars]}
+            )
+    myStudy.build()
+    with open('study_name/a-b-0-4/input.dat') as fin:
+        contents = fin.read()
+        fin.seek(0)
+        checks = []
+        for line in fin:
+            if 'a =' in line:
+                checks.append(line)
+            if 'b =' in line:
+                checks.append(line)
+    fin.close()
+    good = True
+    for line in checks:
+        if 'a =' in line and line != 'a = 0\n':
+            good = False
+        if 'b =' in line and line != 'b = 4\n':
+            good = False
+    if not good:
+        print(contents)
+    shutil.rmtree(myStudy._startDir+myStudy.studyName)
+    assert(good)
+
+
+def test_grouped_params_with_nongrouped():
+    aPars = [0,1,2,3]
+    bPars = [4,5,6,7]
+    myStudy = ps(
+            studyName='study_name',
+            defaultInputFileName='input.dat',
+            defaultPBSFileName='run.pbs',
+            lineMod=myLineMod,
+            parametric_info={
+                'a-b':[aPars,bPars],
+                'c':[8,9]
+                }
+            )
+    myStudy.build()
+    with open('study_name/a-b-0-4c8/input.dat') as fin:
+        contents = fin.read()
+        fin.seek(0)
+        checks = []
+        for line in fin:
+            if 'a =' in line:
+                checks.append(line)
+            if 'b =' in line:
+                checks.append(line)
+            if 'c =' in line:
+                checks.append(line)
+    fin.close()
+    good = True
+    for line in checks:
+        if 'a =' in line and line != 'a = 0\n':
+            good = False
+        if 'b =' in line and line != 'b = 4\n':
+            good = False
+        if 'c =' in line and line != 'c = 8\n':
+            good = False
+    if not good:
+        print(contents)
+    shutil.rmtree(myStudy._startDir+myStudy.studyName)
+    assert(good)
