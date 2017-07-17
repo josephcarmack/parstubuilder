@@ -8,8 +8,9 @@ myStudy = psb.ParametricStudy(
         defaultPBSFileName='run.pbs',
         lineMod=psb.lineMod,
         parametric_info={
-            'N':[56,100,375,400,500],
-            'Ez':[0,12,22,30,41]
+            'a':[0,1,2,3],
+            'b':[4,5,6,7],
+            'c-d':[[8,9],[7,3]] # grouped parameters
             }
         )
 

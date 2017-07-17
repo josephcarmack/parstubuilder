@@ -300,3 +300,43 @@ def test_modify_input_file_with_param_group():
         print(contents)
     shutil.rmtree(myStudy._startDir+myStudy.studyName)
     assert(good)
+
+
+def test_grouped_params_with_nongrouped():
+    aPars = [0,1,2,3]
+    bPars = [4,5,6,7]
+    myStudy = ps(
+            studyName='study_name',
+            defaultInputFileName='input.dat',
+            defaultPBSFileName='run.pbs',
+            lineMod=myLineMod,
+            parametric_info={
+                'a-b':[aPars,bPars],
+                'c':[8,9]
+                }
+            )
+    myStudy.build()
+    with open('study_name/a-b-0-4c8/input.dat') as fin:
+        contents = fin.read()
+        fin.seek(0)
+        checks = []
+        for line in fin:
+            if 'a =' in line:
+                checks.append(line)
+            if 'b =' in line:
+                checks.append(line)
+            if 'c =' in line:
+                checks.append(line)
+    fin.close()
+    good = True
+    for line in checks:
+        if 'a =' in line and line != 'a = 0\n':
+            good = False
+        if 'b =' in line and line != 'b = 4\n':
+            good = False
+        if 'c =' in line and line != 'c = 8\n':
+            good = False
+    if not good:
+        print(contents)
+    shutil.rmtree(myStudy._startDir+myStudy.studyName)
+    assert(good)

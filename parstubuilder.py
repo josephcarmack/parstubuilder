@@ -1,8 +1,21 @@
 import os
 import shutil
 import subprocess as sp
+import time
 
 class ParametricStudy:
+
+
+
+
+
+    # -----------------------------------------------
+    # "Special" methods (i.e. constructor etc)
+    # -----------------------------------------------
+
+
+
+
 
     def __init__(self,**kwargs):
         """Initialize the parametric study with appropriate values."""
@@ -202,17 +215,9 @@ class ParametricStudy:
         # read from temp and write modified version to original
         with open(tempInFi,'r') as fin:
             with open(curInFi,'w') as fout:
-                print(param,value)
-                print('temp:')
-                print(fin.read())
-                fin.seek(0)
                 for line in fin:
                     if param in line:
-                        print('found param, now lets modify it:')
-                        print('line =',line)
                         modifiedLine = self.lineMod(line,param,value)
-                        print('modify to:',modifiedLine)
-                        print('-------------------')
                         fout.write(modifiedLine)
                     else:
                         fout.write(line)
@@ -233,7 +238,6 @@ class ParametricStudy:
             # input file in current sub-directory
             inputFile = self._subDir[i]+'/'+self.defaultInputFileName
             
-            print(s)
             # modify input file by looping over each parameter to be modified
             for par in sorted(s):
                 # check for grouped parameters
@@ -438,6 +442,7 @@ class ParametricStudy:
             os.chdir(self._subDir[i])
             # build the command to submit job to the HPC
             cmd = ['qsub',self.defaultPBSFileName]
+            print('\t'+' '.join(cmd))
             # submit the job and get the job ID
             jID = sp.check_output(cmd)
             # store the job ID in a list
@@ -451,6 +456,7 @@ class ParametricStudy:
             jobStr = jobIDs[0]
             # build the command to submit job to the HPC
             cmd = ['qsub','-W','depend=afterany:'+jobStr,self.defaultPBSFileName]
+            print('\t'+' '.join(cmd))
             # submit the job and get the job ID
             jID = sp.check_output(cmd)
             # store the job ID in a list
@@ -483,6 +489,7 @@ class ParametricStudy:
         for i in range(numConcJobs):
             # build the command to submit job to the HPC
             cmd = ['qsub',jobScripts[i]]
+            print('\t'+' '.join(cmd))
             # submit the job and get the job ID
             jID = sp.check_output(cmd)
             # store the job ID in a list
@@ -495,6 +502,7 @@ class ParametricStudy:
             jobStr = jobIDs[0]
             # build the command to submit job to the HPC
             cmd = ['qsub','-W','depend=afterany:'+jobStr,js]
+            print('\t'+' '.join(cmd))
             # submit the job and get the job ID
             jID = sp.check_output(cmd)
             # store the job ID in a list
@@ -520,6 +528,8 @@ class ParametricStudy:
 
     def build(self):
         """Build the parametric study directories and files."""
+        print('\n\nBuilding parametric study directory structure and populating with necessary files...')
+        start = time.time()
         assert(self._checkBuildInit())
         self._calcNumUniqueParamSets()
         self._createDirStructure()
@@ -533,6 +543,8 @@ class ParametricStudy:
             if self._leftOverJobs > 0:
                 self._handleLeftOverJobs(je,jc)
         self._buildComplete = True
+        end = time.time()
+        print('Setup the whole study in '+str(end-start)+' seconds!')
 
 
 
@@ -540,6 +552,8 @@ class ParametricStudy:
 
     def hpcExecute(self,numConcJobs):
         """Start parametric study jobs on the HPC using the "qsub" command."""
+        print('\n\nLaunching Jobs on the HPC using the following commands:\n')
+        start = time.time()
         self._checkHpcExecInit(numConcJobs)
         self._allJobs = []
         if not self.multipleJobsPerNode:
@@ -550,10 +564,13 @@ class ParametricStudy:
         # change back to the starting directory
         os.chdir(self._startDir+self.studyName)
         # write job IDs to a file in case they need to be deleted later
+        print('\nWriting Job IDs file...')
         with open('jobIDs.txt','w') as fout:
             for jobID in self._allJobs:
                 fout.write(jobID+'\n')
         fout.close()
+        end = time.time()
+        print('\nSubmitted all those jobs in '+str(end-start)+' seconds!')
 
 
 
@@ -561,6 +578,7 @@ class ParametricStudy:
 
     def batchDelete(self):
         """Delete all the jobs running on the HPC for a given parametric study."""
+        start = time.time()
         # checking for jobID.txt file existence
         assert os.path.isfile(self._startDir+'/'+self.studyName+'/jobIDs.txt')
 
@@ -572,6 +590,7 @@ class ParametricStudy:
             print('"studyName" attribute.')
         assert not bad
 
+        print('\n\nDeleting jobs stored in the parametric study\'s JobIds.txt file!')
         with open(self._startDir+'/'+self.studyName+'/jobIDs.txt') as fin:
             for line in fin:
                 jobID = line.split('\n')[0]
@@ -582,6 +601,8 @@ class ParametricStudy:
                 except Exception as e:
                     print('exception caught: '+ type(e).__name__)
         fin.close()
+        end = time.time()
+        print('\nDeleted all those jobs in '+str(end-start)+' seconds!')
 
 
 
@@ -597,6 +618,7 @@ class ParametricStudy:
 
 
 def lineMod(line,par,par_value):
+    """An input file line modifying function that works for input files with format 'parameterString = parameterValue'."""
     rep_value = str(par_value)+str('\n')
     if par in line:
         orig_value = str(line.split(' = ')[1])
