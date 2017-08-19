@@ -216,7 +216,8 @@ class ParametricStudy:
         with open(tempInFi,'r') as fin:
             with open(curInFi,'w') as fout:
                 for line in fin:
-                    if param in line:
+                    if param == line.split()[0]:
+                    #if param in line:
                         modifiedLine = self.lineMod(line,param,value)
                         fout.write(modifiedLine)
                     else:
@@ -586,8 +587,8 @@ class ParametricStudy:
         bad = self.studyName == None
         if bad:
             print('must define attribute "studyName" before calling this method.')
-            print('the string you pass to the batchDelete method must match the')
-            print('"studyName" attribute.')
+            print('It should be defined as a string that is the name of the parametric')
+            print('study directory that contains the jobIDs.txt file.')
         assert not bad
 
         print('\n\nDeleting jobs stored in the parametric study\'s JobIds.txt file!')
@@ -618,7 +619,7 @@ class ParametricStudy:
 
 
 def lineMod(line,par,par_value):
-    """An input file line modifying function that works for input files with format 'parameterString = parameterValue'."""
+    """An input file line modifying function that works for input files with format 'parameterName = parameterValue'."""
     rep_value = str(par_value)+str('\n')
     if par in line:
         orig_value = str(line.split(' = ')[1])
