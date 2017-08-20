@@ -216,12 +216,13 @@ class ParametricStudy:
         with open(tempInFi,'r') as fin:
             with open(curInFi,'w') as fout:
                 for line in fin:
-                    if param == line.split()[0]:
-                    #if param in line:
-                        modifiedLine = self.lineMod(line,param,value)
-                        fout.write(modifiedLine)
-                    else:
-                        fout.write(line)
+                    items = line.split()
+                    if len(items) > 0:
+                        if param == items[0]:
+                            modifiedLine = self.lineMod(line,param,value)
+                            fout.write(modifiedLine)
+                        else:
+                            fout.write(line)
         fout.close()
         fin.close()
         os.remove(tempInFi)
