@@ -207,6 +207,26 @@ class ParametricStudy:
 
 
 
+    def _saveStudyInfo(self):
+        """Write information about the study to a file named 'parStudyInfo.txt'."""
+        path = self.studyName + '/parStudyInfo.txt'
+        with open(path,'w') as fout:
+            # write header
+            fout.write('Parameters varied and their values:\n')
+            # write parameter names and values
+            for par in sorted(self.parametric_info):
+                fout.write(par + ':\t'+str(self.parametric_info[par]))
+                fout.write('\n')
+            # write names of parameter set subdirectories
+            fout.write('Unique parameter set directory names:\n')
+            for parSet in sorted(self._subDirName):
+                fout.write(parSet + '\n')
+        fout.close()
+
+
+
+
+
     def _modInputFile(self,param,value,curInFi):
         """Uses lineMod function to modify input file parameters."""
         # create temporary copy of input file
@@ -535,6 +555,7 @@ class ParametricStudy:
         assert(self._checkBuildInit())
         self._calcNumUniqueParamSets()
         self._createDirStructure()
+        self._saveStudyInfo()
         self._createInputFiles()
         if not self.multipleJobsPerNode:
             self._setupJobScripts()
